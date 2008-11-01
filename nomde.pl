@@ -99,7 +99,7 @@ sub reply_handler {
     if ($qtype eq "AAAA") { $rcode = "NOTIMPL"; goto end;};
     if ($qtype eq "SOA") {
         my $now = gettimeofday(); # yeah that'll give unique serials
-            my $name = $opts{localname};
+        my $name = $opts{localname};
         my ($ttl, $rdata) = (3600, "ns.$name root.$name $now 28800 14400 3600000 0");
         push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype $rdata");
         $rcode = "NOERROR";
@@ -129,49 +129,16 @@ sub reply_handler {
         $rcode = "NOERROR";
         goto end;
     }
-    if ($function eq "echo"){
-        if ($qtype eq "A" && $namelist[0] eq "ns") {
-            my $nsip = $args[0];
-            $nsip =~ s/-/./g;
-            my ($ttl, $rdata) = (20, $nsip);
-            push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype $rdata");
-            $rcode = "NOERROR";
-            goto end;
-        } else {
-            my $nsip = $args[0];
-            $nsip =~ s/-/./g;
-            my $ns = "ns." . "$qname";
-            print "\n$ns\n";
-            $type = "NS";
-            if($qtype eq "NS") {
-                push @ans, Net::DNS::RR->new("$qname 20 $qclass NS $ns");
-            } else {
-                push @auth, Net::DNS::RR->new("$qname 20 $qclass NS $ns");
-            }
-            push @add, Net::DNS::RR->new("$ns 20 $qclass A $nsip");
-            $rcode = "NOERROR";
-            goto end;
-        }
+
+    if ($qtype eq "CNAME") {
+        $rcode = "NOERROR";
+        goto end;
     }
 
-
-    if ($qtype eq "CNAME") { $rcode = "NOERROR"; goto end;};
     if ($qtype eq "PTR") {
         my ($ttl, $rdata) = (0, $opts{ptrname});
         push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype $rdata");
         $rcode = "NOERROR";
-    }
-    if ($qtype eq "TXT" && $function eq "b64" && $opts{file}) {
-        my $val, $i;
-        seek($opts{file}, $args[0], 0);
-        read($opts{file}, $val, 57*2);
-        $val = encode_base64($val);
-        read($opts{file}, $val2, 57*2);
-        $val2 = encode_base64($val2);
-        my $ttl = 60;
-        push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype \"$val\" \"$val2\"" );
-        $rcode = "NOERROR";
-        goto end;
     }
 
     # handling DNS tunneling starts here
