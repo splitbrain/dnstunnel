@@ -83,7 +83,7 @@ fcntl(STDIN, F_SETFL, $flags) or die "2\n";
 #use strict;
 #use warnings;
 
-$dataclean;
+my $dataclean;
 
 sub reply_handler {
     my ($qname, $qclass, $qtype, $peerhost, $header, $packet) = @_;
@@ -219,8 +219,9 @@ sub reply_handler {
 
         sub reader {
             my @args = @_;
-            my $sock = @args[0];
-            my $queue= @args[1];
+            my $sock = $args[0];
+            my $queue= $args[1];
+            my $data;
 
             while(1){
                 if($queue->pending < 32) {
@@ -258,10 +259,13 @@ sub reply_handler {
         $rcode = "NOERROR";
         goto end;
     }
+
     if ($qtype eq "NS") {
-        if($args[0] ne "ns"){ my ($ttl, $rdata) = (3600, "ns.$name");}
-        push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype $rdata");
-        push @add, Net::DNS::RR->new("$qname $ttl $qclass $qtype $opts{ip}");
+        if($function ne "ns"){
+            my ($ttl, $rdata) = (3600, "ns.$opts{localname}");
+            push @ans, Net::DNS::RR->new("$qname $ttl $qclass $qtype $rdata");
+            push @add, Net::DNS::RR->new("$rdata $ttl $qclass $qtype $opts{ip}");
+        }
         $rcode = "NOERROR";
         goto end;
     }
@@ -276,7 +280,7 @@ sub reply_handler {
 
 end:
     if($opts{verbose}){
-        my $element, $name;
+        my ($element, $name);
         print "\n";
         foreach $element (@ans, @auth, @add) {
             $name = $element->string;
@@ -295,7 +299,7 @@ my %datastore;
 # note that this socket is blocking -- WAY harder to do nonblocking with
 # callbacks (need fork/ipc).
 my %socklist : shared;
-%sockdata;
+my %sockdata;
 
 if($>){
     die("You need to be root to run this on port 53\n");
