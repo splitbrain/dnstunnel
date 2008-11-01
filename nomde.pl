@@ -50,7 +50,7 @@ nomde $VERSION - Experimental DNS Server, part of OzymanDNS
 written by Dan Kaminsky <dan\@doxpara.com>
 modified by Andreas Gohr <andi\@splitbrain.org>
 
-Usage:  $opts{filename} <OPTIONS> - servername.example.com
+Usage:  $opts{filename} <OPTIONS> servername.example.com
 Options:
     -l [ip address]      Device to listen on (defaults to 0.0.0.0)
     -i [ip address]      IP address to return for all A requests (required)
