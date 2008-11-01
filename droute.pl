@@ -10,13 +10,16 @@ use Time::HiRes qw (usleep gettimeofday );
 use Getopt::Long;
 use threads;
 use Thread::Queue;
+#use warnings;
 
 $|=1;
 
 # hardcoded destinations
 my $verbose=0;
-my $resolver, $upresolver, $downresolver;
-undef $resolver, $upresolver, $downresolver;
+my ($resolver, $upresolver, $downresolver);
+undef $resolver;
+undef $upresolver;
+undef $downresolver;
 my $min_sleep = $sleep = 100;
 my $mode = "failover";
 
@@ -24,7 +27,8 @@ my $extension;
 undef $extension;
 
 my $persistence = 5;
-undef $file, $resolver;
+undef $file;
+undef $resolver;
 
 my $infile = STDIN;
 my $outfile = STDOUT;
@@ -33,7 +37,7 @@ GetOptions(
     "resolver=s"     => \$resolver,
     "upresolver=s"   => \$upresolver,
     "downresolver=s" =>\$downresolver,
-    "minsleep=i"     => \$minsleep,
+    "minsleep=i"     => \$min_sleep,
     "verbose"        => \$verbose,
     "persistence"    => \$persistence,
     "cyclemode=s"    => \$mode
@@ -123,7 +127,7 @@ my $size_up=0;
 
 my $data_up;
 
-my $sent_up = $sent_down = $do_send_up = 0;
+my $do_send_up = 0;
 my $max_sleep = 4000;
 my $then = 0;
 
@@ -138,7 +142,7 @@ my $down_sent_time;
 my $down_sock;
 my $downstate = "NEED_DATA";
 
-my @txt, $data, $val;
+my (@txt, $data, $val);
 my $hop_up=int rand($#uplist);
 my $hop_down=int rand($#downlist);;
 $val=0;
