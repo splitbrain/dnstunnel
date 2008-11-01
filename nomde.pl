@@ -249,27 +249,6 @@ sub reply_handler {
         }
     }
 
-    if ($function eq "b32" && $args[0] eq "set") {
-        my $descrip = $args[1];
-        my @data = @args[2..$#args];
-        my $string = join(".", @data);
-        $datastore{$descrip} = $qname; #$string;
-        push @ans, Net::DNS::RR->new("$qname $ttl $qclass   A 1.0.0.0");
-        $rcode = "NOERROR";
-        goto end;
-    }
-    if ($function eq "b32" && $args[0] eq "get") {
-        my $descrip = $args[1];
-        if(exists $datastore{$descrip}){
-            push @ans, Net::DNS::RR->new("$qname $ttl $qclass CNAME $datastore{$descrip}");
-            push @add, Net::DNS::RR->new("$datastore{descrip} $ttl $qclass     A 1.0.0.0");
-            $rcode = "NOERROR";
-        } else {
-            $rcode = "NXDOMAIN";
-        }
-        goto end;
-    }
-
     if ($qtype eq "TXT") {
         $val = localtime();
         chomp $val;
