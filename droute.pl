@@ -12,40 +12,38 @@ use threads;
 use Thread::Queue;
 #use warnings;
 
-$|=1;
-
 # hardcoded destinations
-my $verbose=0;
-my ($resolver, $upresolver, $downresolver);
-undef $resolver;
-undef $upresolver;
-undef $downresolver;
-my $min_sleep = $sleep = 100;
-my $mode = "failover";
+my %opts;
+$opts{verbose}     = 0;
+$opts{mode}        = 'failover';
+$opts{min_sleep}   = 100;
+$opts{persistence} = 5;
+
+#my $min_sleep = $sleep = 100;
+#my $mode = "failover";
 
 my $extension;
 undef $extension;
 
-my $persistence = 5;
-undef $file;
-undef $resolver;
+#undef $file;
+#undef $resolver;
 
-my $infile = STDIN;
 my $outfile = STDOUT;
+my $infile = STDIN;
+
 GetOptions(
-    "file=s"         => \$file,
-    "resolver=s"     => \$resolver,
-    "upresolver=s"   => \$upresolver,
-    "downresolver=s" =>\$downresolver,
-    "minsleep=i"     => \$min_sleep,
-    "verbose"        => \$verbose,
-    "persistence"    => \$persistence,
-    "cyclemode=s"    => \$mode
+    "file=s"         => \$opts{file},
+    "resolver=s"     => \$opts{resolver},
+    "upresolver=s"   => \$opts{upresolver},
+    "downresolver=s" => \$opts{downresolver},
+    "minsleep=i"     => \$opts{min_sleep},
+    "verbose"        => \$opts{verbose},
+    "persistence"    => \$opts{persistence},
+    "cyclemode=s"    => \$opts{mode}
 );
 
-if(length($ARGV[0])) { $extension = $ARGV[0];}
-
-if(!defined($extension)){
+$extension = $ARGV[0];
+if(!$extension){
     print STDERR <<"EOD";
 droute $VERSION - DNS Transport for standard input/output, part of OzymanDNS
 written by Dan Kaminsky <dan\@doxpara.com>
@@ -69,53 +67,69 @@ Example:
 EOD
     exit 1;
 }
-if ($mode ne "circle" && $mode ne "random") {$mode = "failover";}
-if(defined($resolver)) {$upresolver = $downresolver = $resolver;}
 
-# set STDIN to nonblock
+# set STDIN to nonblock and remove \n handling
 $flags='';
 fcntl($infile, F_GETFL, $flags) or die "1\n";
 $flags |= O_NONBLOCK;
 fcntl($infile, F_SETFL, $flags) or die "2\n";
-
-# remove \n handling
 binmode $infile;
 binmode $outfile;
 
-# conf downstream DNS
+# globals
+my @downlist;
+my @uplist;
 my $res_down = Net::DNS::Resolver->new;
 $res_down->retry(0);
-$res_down->retrans(1);
-if(defined $downresolver) {
-    @downlist = split(",", $downresolver);
-} else {@downlist = $res_down->nameserver;}
-
-#$res_down->persistent_udp(0);
-
-#conf upstream DNS
+$res_down->retrans(1);;
 my $res_up = Net::DNS::Resolver->new;
 $res_up->retry(0);
 $res_up->retrans(1);
-if(defined $upresolver) {
-    @uplist = split(",", $upresolver);
-} else {@uplist = $res_up->nameserver;}
 
-if(defined $file){
-    open(FILE, "$file");
-    @dnsservs = <FILE>;
-    close FILE;
-    @downlist = (@downlist, @dnsservs);
-    @uplist   = (@uplist,   reverse (@dnsservs));
+# two way resolvers
+if($opts{resolver} || $opts{file}){
+    my $dnslist;
+    if($opts{resolver}){
+        @dnslist = split(",",$opts{resolver});
+    }else{
+        open(FILE, $opts{file}) || die("could not open $opts{file}");
+        @dnslist = <FILE>;
+        close FILE;
+    }
+    chomp(@dnslist);
+    if(scalar(@dnslist)){
+        @downlist = @dnslist;
+        @uplist    = reverse (@dnslist);
+    }
 }
-$res_down->nameserver(join(" ", @downlist));
-$res_up->nameserver(join(" ", @uplist));
 
-if($verbose) {
+# one way resolvers
+if($opts{downresolver}){
+    @downlist = split(',',$opts{downresolver});
+}
+if($opts{upresolver}){
+    @uplist = split(',',$opts{upresolver});
+}
+
+# system resolvers
+if(!scalar(@downlist)){
+    @downlist = $res_down->nameservers;
+}
+if(!scalar(@uplist)){
+    @uplist = $res_up->nameservers;
+}
+
+# init resolvers
+$res_down->nameserver(@downlist);
+$res_up->nameserver(@uplist);
+
+if($opts{verbose}) {
     print STDERR
     "Resolving through:\n",
     "Up:   ", join(", ", $res_up->nameserver),"\n",
     "Down: ", join(", ", $res_down->nameserver), "\n";
 }
+
 
 
 # hardcoded session ID -- should be B32'd and increased
@@ -167,17 +181,15 @@ sub reader {
 while(1) {
     # per packet nonce to evade min-ttl's
     my $nonce=int rand(65536);
-    if($mode eq "circle") {
+    if($opts{mode} eq "circle") {
         if(!$throws_up)  { $throws_up = $persistence; $hop_up++;
             $res_up->nameserver($uplist[$hop_up % ($#uplist+1)]);}
             if(!$throws_down){ $throws_down = $persistence; $hop_down++;
                 $res_down->nameserver($downlist[$hop_down % ($#downlist+1)]);}
-    }
-    if($mode eq "random") {
+    }elsif($opts{mode} eq "random") {
         if(!$throws_up)   {$throws_up = $persistence; $res_up->nameserver($uplist[rand(($#uplist+1))]);}
         if(!$throws_down) {$throws_down = $persistence; $res_down->nameserver($downlist[rand(($#downlist+1))]);}
-    }
-    if($mode eq "failover") {
+    }else {
         $res_up->nameserver($uplist[$hop_up % ($#uplist+1)]);
         $res_down->nameserver($downlist[$hop_down % ($#downlist+1)]);
     }
@@ -194,7 +206,7 @@ while(1) {
         if(gettimeofday() - $down_sent_time > 2) {
             undef $down_sock;
             $throws_down=0;
-            if($mode eq "failover") {$hop_up++; $hop_down++;}
+            if($opts{mode} eq "failover") {$hop_up++; $hop_down++;}
             $downstate = "NEED_DATA";
         }
     }
@@ -270,7 +282,7 @@ up:
         if(gettimeofday() - $up_sent_time > 4.0){
             undef $up_sock;
             $throws_up=0;
-            if($mode eq "failover") {$hop_up++;}
+            if($opts{mode} eq "failover") {$hop_up++;}
             $upstate = "SEND_DATA";
         }
     }
@@ -287,6 +299,6 @@ up:
         }
     }
 
-    usleep($min_sleep * 1000 / 10);
+    usleep($opts{min_sleep} * 1000 / 10);
 }
 
