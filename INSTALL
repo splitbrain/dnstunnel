@@ -1,0 +1,26 @@
+====== Installation ======
+
+===== DNS Side =====
+
+Delegate a subdomain nameserver to the server that will run dnstunneld like this:
+
+server.example.com.           IN      NS      ns.example.com.
+ns.example.com.               IN      A       123.123.123.123
+
+Note: You can not use a server that has already running a nameserver on the external
+      interface, because we need to use port 53.
+
+===== Server Side =====
+
+  - put the dnstunneld* scripts to /opt/dnstunnel
+  - edit the variables in /opt/dnstunnel/dnstunneld.wrapper
+  - link /opt/dnstunnel/dnstunneld.init to /etc/init.d/dnstunneld
+  - enable the init script in the apropriate runlevels
+  - run /etc/init.d/dnstunneld start
+
+===== Client Side =====
+
+  - copy the dnstunnelc script somewhere in your PATH (eg. /usr/local/bin)
+  - Setup an SSH tunnel using the script as Proxy:
+
+   ssh -C -o ProxyCommand="dnstunnel sshdns.server.example.com" user@localhost

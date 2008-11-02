@@ -1,0 +1,43 @@
+#!/bin/sh
+# written by Julius Plenz <julius@dnstunnel.de>
+# modified by Andreas Gohr <andi@splitbrain.org>
+
+set -e
+
+WRAPPER="/opt/dnstunnel/dnstunneld.wrapper"
+PIDFILE="/var/run/dnstunneld.pid"
+
+if [ ! -e "$WRAPPER" ]; then
+    echo "DNS Tunnel wrapper not found, please edit init script"
+    exit 1
+fi
+
+if [ ! -x "$WRAPPER" ]; then
+    echo "DNS Tunnel wrapper not executable, please check permissions"
+    exit 1
+fi
+
+
+case "$1" in
+  start)
+    echo -n "Starting DNS Tunnel"
+    screen -d -m $WRAPPER $PIDFILE
+    echo "."
+    ;;
+  stop)
+    echo -n "Stopping DNS Tunnel"
+    kill `cat $PIDFILE`
+    rm -f $PIDFILE
+    echo "."
+      ;;
+  restart|reload|force-reload)
+    $0 stop
+    $0 start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac
+
+exit 0

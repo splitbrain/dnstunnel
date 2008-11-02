@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-$VERSION = "0.1-splitbrain";
+$VERSION = "2008-11-02";
 
 $|=1;
 
@@ -25,7 +25,6 @@ my %mods;
 
 # parse options
 $opts{ptrname}  = "127.0.0.1";
-$opts{filename} = "nomde.pl";
 $opts{forward}  = "sshdns:127.0.0.1:22";
 $opts{listen}   = "0.0.0.0";
 $opts{verbose}  = 0;
@@ -50,11 +49,11 @@ if($ARGV[0]) {
 # check minimum option or print usage
 if(!length($opts{localname}) || !length($opts{ip})){
         print STDERR << "EOD";
-nomde $VERSION - Experimental DNS Server, part of OzymanDNS
+dnstunneld $VERSION - DNS tunnel server
 written by Dan Kaminsky <dan\@doxpara.com>
 modified by Andreas Gohr <andi\@splitbrain.org>
 
-Usage:  $opts{filename} <OPTIONS> server.example.com
+Usage:  dnstunneld <OPTIONS> server.example.com
 Options:
     -l [ip address]      Device to listen on (defaults to 0.0.0.0)
     -i [ip address]      IP address to return for all A requests (required)

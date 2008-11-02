@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Configure your DNS tunnel server here
+#
+
+DNSHOST="server.example.com"           # change this to your DNS name
+REPLYIP="127.0.0.1"                    # what to answer on real DNS requests
+OPTIONS=""                             # give additional options here
+
+DNSTUNNELD="/opt/dnstunnel/dnstunneld" # the server script
+
+# --------- no changes below -----------------------
+
+PIDFILE=$1
+if [ -z "$PIDFILE" ]; then
+    PIDFILE="/var/run/dnstunneld.pid"
+fi
+echo $$ > $PIDFILE
+
+while [ 1 ] ; do
+    $DNSTUNNELD $OPTIONS -i $REPLYIP $DNSHOST >/dev/null 2>&1
+done

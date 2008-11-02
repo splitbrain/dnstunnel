@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-$VERSION="0.1-splitbrain";
+$VERSION="2008-11-02";
 
 use Fcntl;
 use Net::DNS;
@@ -45,11 +45,11 @@ GetOptions(
 $extension = $ARGV[0];
 if(!$extension){
     print STDERR <<"EOD";
-droute $VERSION - DNS Transport for standard input/output, part of OzymanDNS
+dnstunnelc $VERSION - DNS tunnel transport client
 written by Dan Kaminsky <dan\@doxpara.com>
 modified by Andreas Gohr <andi\@splitbrain.org>
 
-Usage:  droute <OPTIONS> sshdns.server.example.com
+Usage:  dnstunnelc <OPTIONS> sshdns.server.example.com
 Options:
     -r [nameservers]    comma separated nameservers to lookup against
     -m [minsleep]       Specify minimum sleep delay between probes
@@ -63,7 +63,7 @@ Modes:
     circle              Move to next server with each packet group
     random              Move to random server with each packet group
 Example:
-    ssh -C -o ProxyCommand="./droute.pl sshdns.server.example.com" localhost
+    ssh -C -o ProxyCommand="./dnstunnelc sshdns.server.example.com" localhost
 EOD
     exit 1;
 }
