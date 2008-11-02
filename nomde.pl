@@ -29,12 +29,16 @@ $opts{filename} = "nomde.pl";
 $opts{forward}  = "sshdns:127.0.0.1:22";
 $opts{listen}   = "0.0.0.0";
 $opts{verbose}  = 0;
+$opts{user}     = 'nobody';
+$opts{group}    = 'nobody';
 GetOptions(
         "ip=s"      =>  \$opts{ip},
         "ptrname=s" =>  \$opts{ptrname},
         "forward=s" =>  \$opts{forward},
         "listen=s"  =>  \$opts{listen},
         "verbose"   =>  \$opts{verbose},
+        "user=s"    =>  \$opts{user},
+        "group=s"   =>  \$opts{group}
 );
 if($ARGV[0]) {
         $opts{localname} = $ARGV[0];
@@ -57,6 +61,8 @@ Options:
     -p [name]            Name/IP to return for reverse lookups[ptr]
     -f [name:host:port]  Forward function to address, port
                          (Default:  sshdns:127.0.0.1:22)
+    -u [user]            drop privileges to this user
+    -g [group]           drop privileges to this group
 EOD
         exit 1;
 }
@@ -294,17 +300,20 @@ end:
     return @response;
 }
 
-my %datastore;
 
 # note that this socket is blocking -- WAY harder to do nonblocking with
 # callbacks (need fork/ipc).
 my %socklist : shared;
 my %sockdata;
 
-if($>){
-    die("You need to be root to run this on port 53\n");
-}
+# check users
+die "You need to be root to run this on port 53\n" if($>);
+$dropuid = getpwnam($opts{user});
+die("User $opts{user} does not exist") if(!$dropuid);
+$dropgid = getgrnam($opts{group});
+die("Group $opts{group} does not exist") if(!$dropgid);
 
+# open socket
 my $ns = Net::DNS::Nameserver->new(
     LocalAddr    => $opts{listen},
     LocalPort    => 53,
@@ -312,5 +321,12 @@ my $ns = Net::DNS::Nameserver->new(
     Verbose      => $opts{verbose},
 ) || die "couldn't create nameserver object\n";
 
+# drop privileges
+print "Dropping privileges to UID=$dropuid GID=$dropgid\n" if($opts{verbose});
+( $(, $) ) = ("$dropgid $dropgid","$dropgid $dropgid");
+( $<, $> ) = ($dropuid, $dropuid);
+( $<, $> ) = ($dropuid, $dropuid);
+
+# run
 $ns->main_loop;
 
