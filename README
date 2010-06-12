@@ -1,5 +1,11 @@
 ====== Installation ======
 
+These scripts provide a way to setup a DNS Tunnel. They are based on Dan Kaminski's
+OzymanDNS scripts.
+
+Read more at
+http://www.splitbrain.org/blog/2008-11/02-dns_tunneling_made_simple
+
 ===== DNS Side =====
 
 Delegate a subdomain nameserver to the server that will run dnstunneld like this:
